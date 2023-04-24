@@ -1,45 +1,85 @@
 <script lang="ts">
-	import Message from "../components/message.svelte";
+	import ChatMessage from '../components/ChatMessage.svelte'
+    import type { ChatCompletionRequestMessage } from 'openai'
+	import { SSE } from 'sse.js'
 
-    type MessageType = {
-        varient: string,
-        content: string
-    }
+    let query: string = ''
+	let answer: string = ''
+	let loading: boolean = false
+	let chatMessages: ChatCompletionRequestMessage[] = []
+	let scrollToDiv: HTMLDivElement
 
-    let messages: Array<MessageType> = [
-        {varient: 'assistant', content: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit.'},
-        {varient: 'user', content: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod.'},
-    ]
-
-    let input = ''
+	function scrollToBottom() {
+		setTimeout(function () {
+			scrollToDiv.scrollIntoView({ behavior: 'smooth', block: 'end', inline: 'nearest' })
+		}, 100)
+	}
 
     const handleSubmit = async () => {
-        messages.push({varient: 'user', content: input})
-        messages = messages
-        input = ''
+        loading = true
+		chatMessages = [...chatMessages, { role: 'user', content: query}]
+		const eventSource = new SSE('/api/chat', {
+			headers: {
+				'Content-Type': 'application/json'
+			},
+			payload: JSON.stringify({ messages: chatMessages })
+		})
+        query = ''
+		eventSource.addEventListener('error', handleError)
+		eventSource.addEventListener('message', (e) => {
+			scrollToBottom()
+			try {
+				loading = false
+				if (e.data === '[DONE]') {
+					chatMessages = [...chatMessages, { role: 'assistant', content: answer}]
+					answer = ''
+					return
+				}
+				const completionResponse = JSON.parse(e.data)
+				const [{ delta }] = completionResponse.choices
+				if (delta.content) {
+					answer = (answer ?? '') + delta.content
+				}
+			} catch (err) {
+				handleError(err)
+			}
+		})
+		eventSource.stream()
+		scrollToBottom()
     }
+
+    function handleError<T>(err: T) {
+		loading = false
+		query = ''
+		answer = ''
+		console.error(err)
+	}
 </script>
-<body class="flex flex-col items-center justify-center w-screen min-h-screen bg-gray-100 text-gray-800 p-10">
 
-	<!-- Component Start -->
-	<div class="flex flex-col flex-grow w-full max-w-xl bg-white shadow-xl rounded-lg overflow-hidden">
-		<div class="flex flex-col flex-grow h-0 p-4 overflow-auto">
-            {#each messages as message}
-                <Message varient='{message.varient}' content='{message.content}'/>
-            {/each}
-		</div>
-		
-		<div class="bg-gray-300 p-4 flex">
-            <form
-                class="w-full"
-                on:submit|preventDefault={() => handleSubmit()}
-            >
-                <input type="text" class="flex items-center h-10 w-full rounded px-3 text-sm" bind:value={input}  placeholder="Type your message…"/>
-            </form>
-			<!-- <input bind:value={input} class="flex items-center h-10 w-full rounded px-3 text-sm" type="text" placeholder="Type your message…"> -->
-            <!-- <button type='button' on:click={() => handleSubmit} class="">submit</button> -->
-		</div>
-	</div>
-	<!-- Component End  -->
+<!-- Component Start -->
+<div class="flex flex-col flex-grow w-full max-w-xl bg-white shadow-xl rounded-lg overflow-hidden">
+    <div class="flex flex-col flex-grow h-0 p-4 overflow-auto">
+        <ChatMessage type="assistant" message="Hello, ask me anything you want!" />
+        {#each chatMessages as message}
+            <ChatMessage type={message.role} message={message.content} />
+        {/each}
+        {#if answer}
+            <ChatMessage type="assistant" message={answer} />
+        {/if}
+        {#if loading}
+            <ChatMessage type="assistant" message="Loading.." />
+        {/if}
+        <div class="" bind:this={scrollToDiv} />
+    </div>
+    
+    <div class="bg-gray-300 p-4 flex">
+        <form
+            class="w-full"
+            on:submit|preventDefault={() => handleSubmit()}
+        >
+            <input type="text" class="flex items-center h-10 w-full rounded px-3 text-sm" bind:value={query}  placeholder="Type your message…"/>
+        </form>
+    </div>
+</div>
+<!-- Component End  -->
 
-</body>
