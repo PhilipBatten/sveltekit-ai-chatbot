@@ -1,0 +1,13 @@
+version: '3'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      
+  app-prod:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: deploy-node
