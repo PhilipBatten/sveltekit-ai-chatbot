@@ -13,14 +13,15 @@ Built with:
 
 Run the following command to view the production like application:
 ```
-docker-compose up -d app-prod
+make start-prod
 ```
 The application will be running at http://localhost:3000
 
 ## Development environment
 
-Running the app with docker is easy, and hot module reload works! Simply run:
+Running the app with docker is easy, and hot module reload works! 
+Simply run:
 ```
-docker-compose up -d app
+make start
 ```
 The application will be running at http://localhost:3000
