@@ -1,4 +1,4 @@
-import { OPENAI_KEY } from '$env/static/private'
+import { OPENAI_KEY, COMPANY_NAME, COMPANY_TYPE, AGENT_NAME } from '$env/static/private'
 import type { CreateChatCompletionRequest, ChatCompletionRequestMessage } from 'openai'
 import { getTokens } from '$lib/tokenizer';
 import { json } from '@sveltejs/kit';
@@ -44,8 +44,8 @@ export const POST: RequestHandler = async ({ request }) => {
 			throw new Error('Query flagged by openai')
 		}
 
-		const prompt =
-			'You are a virtual assistant for a company called Efficio Consulting. The company specialises in procurement consultancy. Your name is Axel Smith'
+		const prompt = 
+			`You are a virtual assistant for a company called ${COMPANY_NAME}. The company specialises in ${COMPANY_TYPE}. Your name is ${AGENT_NAME}`
 		tokenCount += getTokens(prompt)
 
 		if (tokenCount >= 4000) {
